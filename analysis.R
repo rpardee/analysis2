@@ -34,24 +34,22 @@ names(samsungData) = s
 
 # activity ~ 'tBodyAcc-max()-X' + 'tBodyAcc-max()-Y' + 'tBodyAcc-max()-Z' + 'tBodyAcc-min()-X' + 'tBodyAcc-min()-Y' + 'tBodyAcc-min()-Z'
 
-findvars <- function() {
-  # Loops through the possible predictor vars, does an lm() predicting activity
-  # from each, and returns a data.frame of coefficients.
+findvars <- function(x = samsungData, dv = 'activity', id = 'subject') {
+  # Loops through the possible predictor vars, does an lm() predicting the dv
+  # from each, and returns a data.frame of coefficients, one row per IV.
   r <- data.frame()
-  ivs <- setdiff(names(samsungData), c('subject', 'activity'))[1:20]
+  # All varnames apart from the dependent var, and the case identifier
+  ivs <- setdiff(names(x), c(dv, id))
   for (iv in ivs) {
-    print(paste("trying", c(iv,'activity')))
-    sub <- complete.cases(samsungData[, c(iv, 'activity')])
-    m <- lm(activity ~ iv, data = sub, na.rm = TRUE)
+    print(paste("trying", iv))
+    m <- lm(eval(parse(text = paste(dv, iv, sep='~'))), data = x, na.rm = TRUE)
+    # Take the absolute value of the coefficient, then transpose.
     c <- t(as.data.frame(sapply(m$coefficients, abs)))
-    row.names(c) <- iv
+    c$iv <- iv # which IV produced this row?
     r <- c(r, c)
   }
   return(r)
 }
+
 findvars()
-
-m <- lm(formula = tBodyAcc_max_X ~ activity, data = samsungData)
-sapply(m$coefficients, abs)
-
 
