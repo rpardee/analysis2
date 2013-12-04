@@ -27,8 +27,31 @@ testers   <- samsungData[samsungData$subject %in% 27:30         , ]
 
 
 s = names(samsungData)
-s = gsub( '[()]'           ,''  ,s ) # replace trailing parens
-s = gsub( '[^0-9a-zA-Z-]+' ,'_' ,s ) # replace nonalpha chars with underscore
+s = gsub( '[()]'           ,''  ,s ) # replace parens
+s = gsub( '[^0-9a-zA-Z]+' ,'_' ,s ) # replace nonalpha chars with underscore
 s = make.unique(s)
+names(samsungData) = s
 
-activity ~ 'tBodyAcc-max()-X' + 'tBodyAcc-max()-Y' + 'tBodyAcc-max()-Z' + 'tBodyAcc-min()-X' + 'tBodyAcc-min()-Y' + 'tBodyAcc-min()-Z'
+# activity ~ 'tBodyAcc-max()-X' + 'tBodyAcc-max()-Y' + 'tBodyAcc-max()-Z' + 'tBodyAcc-min()-X' + 'tBodyAcc-min()-Y' + 'tBodyAcc-min()-Z'
+
+findvars <- function() {
+  # Loops through the possible predictor vars, does an lm() predicting activity
+  # from each, and returns a data.frame of coefficients.
+  r <- data.frame()
+  ivs <- setdiff(names(samsungData), c('subject', 'activity'))[1:20]
+  for (iv in ivs) {
+    print(paste("trying", c(iv,'activity')))
+    sub <- complete.cases(samsungData[, c(iv, 'activity')])
+    m <- lm(activity ~ iv, data = sub, na.rm = TRUE)
+    c <- t(as.data.frame(sapply(m$coefficients, abs)))
+    row.names(c) <- iv
+    r <- c(r, c)
+  }
+  return(r)
+}
+findvars()
+
+m <- lm(formula = tBodyAcc_max_X ~ activity, data = samsungData)
+sapply(m$coefficients, abs)
+
+
