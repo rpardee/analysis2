@@ -1,3 +1,4 @@
+
 # source('C:/Users/Roy/r_projects/analysis2/analysis.R')
 setwd('C:/Users/Roy/r_projects/analysis2')
 load('samsungData.rda')
@@ -51,5 +52,18 @@ findvars <- function(x = samsungData, dv = 'activity', id = 'subject') {
   return(r)
 }
 
-findvars()
+# findvars()
+tst <- samsungData[, c(10:15, 562, 563)]
 
+findvars <- function(x,dv,id){
+  ivs <- setdiff(names(x),c(dv,id))
+  #initialize result list of the appropriate length
+  result <- setNames(vector("list",length(ivs)),ivs)
+  for (i in seq_along(ivs)){
+    # print(paste(dv,ivs[i],sep = "~"))
+    result[[i]] <- abs(coef(lm(paste(ivs[i],dv,sep = "~"),data = x)))
+  }
+  t(as.data.frame(result))
+}
+
+findvars(x = tst, dv = 'activity', id = 'subject')
