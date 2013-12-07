@@ -16,9 +16,6 @@ load('samsungData.rda')
 # describe your analysis in a report as explained below.
 
 
-trainers  <- samsungData[samsungData$subject %in% c(1, 3, 5, 6) , ]
-testers   <- samsungData[samsungData$subject %in% 27:30         , ]
-
 # Dimension reduction
   #  There are 561 substantive variables!
   #  SVD or PCA--see 'clustering example' lecture from week 4, which uses this data.
@@ -28,32 +25,15 @@ testers   <- samsungData[samsungData$subject %in% 27:30         , ]
 
 
 s = names(samsungData)
-s = gsub( '[()]'           ,''  ,s ) # replace parens
+s = gsub( '[()]'          ,''  ,s ) # replace parens
 s = gsub( '[^0-9a-zA-Z]+' ,'_' ,s ) # replace nonalpha chars with underscore
 s = make.unique(s)
 names(samsungData) = s
 
-# activity ~ 'tBodyAcc-max()-X' + 'tBodyAcc-max()-Y' + 'tBodyAcc-max()-Z' + 'tBodyAcc-min()-X' + 'tBodyAcc-min()-Y' + 'tBodyAcc-min()-Z'
+trainers  <- samsungData[samsungData$subject %in% c(1, 3, 5, 6) , ]
+testers   <- samsungData[samsungData$subject %in% 27:30         , ]
 
-findvars <- function(x = samsungData, dv = 'activity', id = 'subject') {
-  # Loops through the possible predictor vars, does an lm() predicting the dv
-  # from each, and returns a data.frame of coefficients, one row per IV.
-  r <- data.frame()
-  # All varnames apart from the dependent var, and the case identifier
-  ivs <- setdiff(names(x), c(dv, id))
-  for (iv in ivs) {
-    print(paste("trying", iv))
-    m <- lm(eval(parse(text = paste(dv, iv, sep='~'))), data = x, na.rm = TRUE)
-    # Take the absolute value of the coefficient, then transpose.
-    c <- t(as.data.frame(sapply(m$coefficients, abs)))
-    c$iv <- iv # which IV produced this row?
-    r <- c(r, c)
-  }
-  return(r)
-}
-
-# findvars()
-tst <- samsungData[, c(10:15, 562, 563)]
+tst <- trainers[, c(10:15, 562, 563)]
 
 findvars <- function(x,dv,id){
   ivs <- setdiff(names(x),c(dv,id))
@@ -63,7 +43,19 @@ findvars <- function(x,dv,id){
     # print(paste(dv,ivs[i],sep = "~"))
     result[[i]] <- abs(coef(lm(paste(ivs[i],dv,sep = "~"),data = x)))
   }
-  t(as.data.frame(result))
+  as.data.frame(t(as.data.frame(result)))
 }
 
-findvars(x = tst, dv = 'activity', id = 'subject')
+# x <- findvars(x = tst, dv = 'activity', id = 'subject')
+x <- findvars(x = trainers, dv = 'activity', id = 'subject')
+nvars <- 4
+# This returns the names of the 10-best predictors for activity standing
+best_standing <- row.names(x[order(-x['activitystanding']), 0:2][1:nvars, ])
+best_sitting  <- row.names(x[order(-x['activitysitting' ]), 0:2][1:nvars, ])
+best_walk     <- row.names(x[order(-x['activitywalk'    ]), 0:2][1:nvars, ])
+best_walkdown <- row.names(x[order(-x['activitywalkdown']), 0:2][1:nvars, ])
+best_walkup   <- row.names(x[order(-x['activitywalkup'  ]), 0:2][1:nvars, ])
+
+vars_to_use <- unique(c(best_standing, best_sitting, best_walk, best_walkdown, best_walkup))
+library(lattice)
+pairs(trainers[, vars_to_use], col = as.factor(trainers[, 'activity']))
