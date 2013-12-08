@@ -48,14 +48,73 @@ findvars <- function(x,dv,id){
 
 # x <- findvars(x = tst, dv = 'activity', id = 'subject')
 x <- findvars(x = trainers, dv = 'activity', id = 'subject')
-nvars <- 4
+nvars <- 8
 # This returns the names of the 10-best predictors for activity standing
+best_laying   <- row.names(x[order(-x['(Intercept)'     ]), 0:2][1:nvars, ])
 best_standing <- row.names(x[order(-x['activitystanding']), 0:2][1:nvars, ])
 best_sitting  <- row.names(x[order(-x['activitysitting' ]), 0:2][1:nvars, ])
 best_walk     <- row.names(x[order(-x['activitywalk'    ]), 0:2][1:nvars, ])
 best_walkdown <- row.names(x[order(-x['activitywalkdown']), 0:2][1:nvars, ])
 best_walkup   <- row.names(x[order(-x['activitywalkup'  ]), 0:2][1:nvars, ])
 
-vars_to_use <- unique(c(best_standing, best_sitting, best_walk, best_walkdown, best_walkup))
+vars_to_use <- unique(c(best_laying, best_standing, best_sitting, best_walk, best_walkdown, best_walkup))
 library(lattice)
-pairs(trainers[, vars_to_use], col = as.factor(trainers[, 'activity']))
+# pairs(trainers[, vars_to_use], col = as.factor(trainers[, 'activity']))
+
+# dev.new()
+
+# We know we want one cluster per activity:
+cl <- kmeans(trainers[, vars_to_use], centers = 6, nstart = 100)
+table(cl$cluster, trainers[, 'activity'])
+
+library(clue)
+
+# cl_predict(object = cl, newdata = testers[, vars_to_use], type = c("class_ids", "memberships"), ...)
+val <- cl_predict(object = cl, newdata = testers[, vars_to_use])
+table(val, testers[, 'activity'])
+
+prd <- function(clus) {
+  lkp <- c("laying" = 1, "walk" = 2, "laying" = 3, "standing" = 4, "standing" = 5, "walkdown" = 6)
+  names(lkp[clus])
+}
+
+# From http://stackoverflow.com/questions/2557863/measures-of-association-in-r-kendalls-tau-b-and-tau-c
+
+# number of concordant pairs
+P = function(t) {
+  r_ndx = row(t)
+  c_ndx = col(t)
+  sum(t * mapply(function(r, c){sum(t[(r_ndx > r) & (c_ndx > c)])},
+    r = r_ndx, c = c_ndx))}
+
+# number of discordant pairs
+Q = function(t) {
+  r_ndx = row(t)
+  c_ndx = col(t)
+  sum(t * mapply( function(r, c){
+      sum(t[(r_ndx > r) & (c_ndx < c)])
+  },
+    r = r_ndx, c = c_ndx) )
+}
+
+kendall_tau_c = function(t){
+    t = as.matrix(t)
+    m = min(dim(t))
+    n = sum(t)
+    ks_tauc = (m*2 * (P(t)-Q(t))) / ((n^2)*(m-1))
+    ks_tauc
+}
+kendall_tau_a = function(t) {
+  # Kendall_tau_a = (P - Q) / (n*(n-1)/2)
+
+}
+
+
+           laying sitting standing walk walkdown walkup
+  laying      221       0        0    0        0      0
+  standing      0     197      227    0        0      0
+  walk          0       1        0  242       34    198
+  walkdown      0       0        0   24      159     12
+
+  laying, laying, 221
+  standing, sitting, 197
